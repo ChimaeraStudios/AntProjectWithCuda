@@ -12,7 +12,7 @@
 #define NUM_ANTS 100
 #define WIDTH 1000
 #define HEIGHT 1000
-#define FOOD_SOURCES 100
+#define FOOD_SOURCES 10
 
 // Macro for checking CUDA function calls and handling errors
 #define CHECK_CUDA_CALL(call)                                        \
@@ -25,39 +25,53 @@
     }                                                                \
 }
 
-// Function to save the environment grid and ant positions to CSV files
-void saveEnvironmentAndAnts(int* environment, Ant* ants, int width, int height, int numAnts, int iteration) {
-    // Allocate memory on the host to store data from the device
+// Modify the function to store data in memory
+void accumulateEnvironmentAndAnts(int* environment, Ant* ants, int width, int height, int numAnts, std::vector<std::string>& envSnapshots, std::vector<std::string>& antSnapshots) {
+    // Temporary allocation on host
     int* hostEnvironment = static_cast<int *>(malloc(sizeof(int) * width * height));
     Ant* hostAnts = static_cast<Ant *>(malloc(sizeof(Ant) * numAnts));
 
-    // Copy data from the device to the host
+    // Copy data from device to host
     CHECK_CUDA_CALL(cudaMemcpy(hostEnvironment, environment, sizeof(int) * width * height, cudaMemcpyDeviceToHost));
     CHECK_CUDA_CALL(cudaMemcpy(hostAnts, ants, sizeof(Ant) * numAnts, cudaMemcpyDeviceToHost));
 
-    // Save the environment grid to a CSV file
-    std::ofstream envFile("environment_" + std::to_string(iteration) + ".csv");
+    // Generate environment snapshot
+    std::ostringstream envStream;
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            envFile << hostEnvironment[y * width + x];
-            if (x < width - 1) envFile << ",";
+            envStream << hostEnvironment[y * width + x];
+            if (x < width - 1) envStream << ",";
         }
-        envFile << "\n";
+        envStream << "\n";
     }
-    envFile.flush();
-    envFile.close();
+    envSnapshots.push_back(envStream.str());
 
-    // Save the ant positions and states to a CSV file
-    std::ofstream antsFile("ants_" + std::to_string(iteration) + ".csv");
+    // Generate ant snapshot
+    std::ostringstream antsStream;
     for (int i = 0; i < numAnts; i++) {
-        antsFile << hostAnts[i].x << "," << hostAnts[i].y << "," << hostAnts[i].hasFood << "\n";
+        antsStream << hostAnts[i].x << "," << hostAnts[i].y << "," << hostAnts[i].hasFood << "\n";
     }
-    antsFile.flush();
-    antsFile.close();
+    antSnapshots.push_back(antsStream.str());
 
-    // Free the allocated host memory
+    // Free temporary host memory
     free(hostEnvironment);
     free(hostAnts);
+}
+
+void saveAccumulatedData(const std::vector<std::string>& envSnapshots, const std::vector<std::string>& antSnapshots) {
+    // Save environment snapshots
+    for (size_t i = 0; i < envSnapshots.size(); ++i) {
+        std::ofstream envFile("environment_" + std::to_string(i) + ".csv");
+        envFile << envSnapshots[i];
+        envFile.close();
+    }
+
+    // Save ant snapshots
+    for (size_t i = 0; i < antSnapshots.size(); ++i) {
+        std::ofstream antsFile("ants_" + std::to_string(i) + ".csv");
+        antsFile << antSnapshots[i];
+        antsFile.close();
+    }
 }
 
 int main() {
@@ -93,16 +107,17 @@ int main() {
 
     // Initialize random states for ants
     initializeRandomStates<<<numBlocks, threadsPerBlock>>>(states, time(0), NUM_ANTS);
-    cudaDeviceSynchronize();
 
     int iteration = 0;
     bool hasFood = true;
+
+    std::vector<std::string> environmentSnapshots;
+    std::vector<std::string> antSnapshots;
 
     // Main simulation loop
     while (hasFood) {
         // Move ants according to their state and environment
         moveAnts<<<numBlocks, threadsPerBlock>>>(ants, environment, states, NUM_ANTS, WIDTH, HEIGHT);
-        cudaDeviceSynchronize();
 
         // Check if any food is left in the environment
         int* checkEnvironment = static_cast<int *>(malloc(sizeof(int) * WIDTH * HEIGHT));
@@ -119,10 +134,12 @@ int main() {
         free(checkEnvironment);
 
         // Save the current state of the simulation
-        saveEnvironmentAndAnts(environment, ants, WIDTH, HEIGHT, NUM_ANTS, iteration);
+        accumulateEnvironmentAndAnts(environment, ants, WIDTH, HEIGHT, NUM_ANTS, environmentSnapshots, antSnapshots);
         iteration++;
         std::cout << "Iteration " << iteration << " completed.\n";
     }
+
+    saveAccumulatedData(environmentSnapshots, antSnapshots);
 
     // Free device memory
     cudaFree(environment);
