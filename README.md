@@ -1,23 +1,29 @@
-# Simulazione Ambiente con CUDA C
+# Environment Simulation with CUDA
 
-Questo progetto implementa una simulazione di formiche che interagiscono con un ambiente bidimensionale. La computazione è ottimizzata utilizzando CUDA C, mentre la visualizzazione è gestita tramite Python.
+This project implements a simulation of ants interacting with a two-dimensional environment. The computation is optimized using CUDA, while visualization is handled through Python.
 
-## Struttura del progetto
+## Project Structure
 
-- `main.cu`: Punto d'ingresso del programma.
-- `kernel.cu` e `kernel.cuh`: Definizioni e implementazioni delle funzioni CUDA.
-- `randomStatesKernel.cu` e `randomStatesKernel.cuh`: Gestione degli stati casuali.
-- `visualize.py`: Script Python per la visualizzazione dei risultati.
+- `main.cu`: Entry point of the program.
+- `kernel.cu` and `kernel.cuh`: Definitions and implementations of CUDA functions.
+- `randomStatesKernel.cu` and `randomStatesKernel.cuh`: Management of random states.
+- `visualize.py`: Python script for result visualization.
 
-## Requisiti
+## Requirements
 
-1. **CUDA Toolkit** installato sul sistema.
-2. **Python** con le seguenti librerie:
+1. **CUDA Toolkit** installed on the system.
+2. **Python** with the following libraries:
    - `numpy`
    - `matplotlib`
 
-## Come Eseguire
+## How to Run
 
-1. Compila il progetto CUDA:
+1. Compile the CUDA project:
    ```bash
-   nvcc main.cu kernel.cu randomStatesKernel.cu -o simulazione
+   nvcc main.cu kernel.cu randomStatesKernel.cu -o simulation
+   ```
+
+---
+
+**Group Member:** Andrea Menci  
+**GitHub:** https://github.com/Mancee28
